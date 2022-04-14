@@ -14,7 +14,6 @@ class DataFrameCollector(Collector):
         self.results = pd.DataFrame(schema)
 
     def collect(self, logs: dict):
-        assert (set(logs.keys()) & set(self.results.columns)) == set(self.results.columns) == set(logs.keys())
         self.results = self.results.append(logs, ignore_index=True)
 
     def get_result(self):

@@ -18,7 +18,7 @@ def _load_tensors_sub_images(dataset, domain, mode):
 
 
 def _load_tensors_sub(dataset, domain, mode):
-    with open(f'../features/{dataset}/nocrop_{domain}_{mode}.plk', 'rb') as f:
+    with open(f'./features/{dataset}/nocrop_{domain}_{mode}.plk', 'rb') as f:
         features, labels = pickle.load(f)
     features, labels = features.numpy(), labels.numpy()
     assert len(features) == len(labels)

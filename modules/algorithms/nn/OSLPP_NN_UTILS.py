@@ -14,11 +14,12 @@ from modules.selection.uncertanties import select_initial_rejected, get_new_reje
 
 def train_NN(feats, labels, num_epochs, params, balanced, lr, initial=False):
     num_src_classes = params.num_common + params.num_src_priv
-    assert (labels.unique() == torch.arange(num_src_classes)).all()
 
     if not initial:
         feats, labels = feats[labels >= 0], labels[labels >= 0]
         feats, labels = feats[labels < num_src_classes], labels[labels < num_src_classes]
+        
+    assert (labels.unique() == torch.arange(num_src_classes)).all()
 
     model = nn.Sequential(nn.Linear(params.pca_dim, params.proj_dim), nn.ReLU(),
                           nn.Linear(params.proj_dim, num_src_classes)).cuda().train()
@@ -58,7 +59,7 @@ def entropy_loss(logits):
 
 
 def train_osda(params: Params, lr, epochs, select_reject_mode, seed, common, tgt_private, logger,
-               balanced_config=lambda feats, common: (None, False)):
+               balanced_config=lambda feats, common: (None, False), weights=None, tops=None):
     set_seed(seed)
     print(params.source, '->', params.target, 'lr=', lr, 'seed=', seed)
     (feats_S, labels_S), (feats_T, labels_T) = create_datasets_sub(params.dataset,
@@ -66,7 +67,8 @@ def train_osda(params: Params, lr, epochs, select_reject_mode, seed, common, tgt
                                                                    params.target,
                                                                    common,
                                                                    tgt_private)
-    # params.n_r = int(len(labels_T) * n_r)
+    
+    params.n_r = int(len(labels_T) * params.n_r)
     num_src_classes = params.num_common + params.num_src_priv
 
     # l2 normalization and pca
@@ -93,8 +95,10 @@ def train_osda(params: Params, lr, epochs, select_reject_mode, seed, common, tgt
     selected = torch.tensor(select_closed_set_pseudo_labels(cs_pseudo_labels.numpy(), confs.numpy(), predictions_T_2,
                                                             t, params.T,
                                                             mode=select_reject_mode,
-                                                            uniform_ratio=uniform_ratio, balanced=balanced))
-    rejected = torch.tensor(select_initial_rejected(confs, predictions_T_2, params.n_r, mode=select_reject_mode))
+                                                            uniform_ratio=uniform_ratio, balanced=balanced,
+                                                            weights=weights, tops=tops))
+    rejected = torch.tensor(select_initial_rejected(confs, predictions_T_2, params.n_r,
+                                                    mode=select_reject_mode, weights=weights, tops=tops))
     selected = selected * (1 - rejected)
 
     pseudo_labels = cs_pseudo_labels.clone()
@@ -119,12 +123,15 @@ def train_osda(params: Params, lr, epochs, select_reject_mode, seed, common, tgt
 
         confs, cs_pseudo_labels = predictions_T_2.max(dim=1)
         selected = torch.tensor(
-            select_closed_set_pseudo_labels(cs_pseudo_labels.numpy(), confs.numpy(), t, params.T,
-                                            predictions_T_2, select_reject_mode,
-                                            uniform_ratio=uniform_ratio, balanced=balanced))
+            select_closed_set_pseudo_labels(cs_pseudo_labels.numpy(), confs.numpy(), predictions_T_2,
+                                            t, params.T,
+                                            mode=select_reject_mode,
+                                            uniform_ratio=uniform_ratio, balanced=balanced,
+                                            weights=weights, tops=tops))
 
         selected = selected * (1 - rejected)
-        rejected_new = get_new_rejected(confs, predictions_T_2, selected, rejected, mode=select_reject_mode)
+        rejected_new = get_new_rejected(confs, predictions_T_2, selected, rejected, mode=select_reject_mode,
+                                        weights=weights, tops=tops)
         rejected[rejected_new == 1] = 1
         selected = selected * (1 - rejected)
 

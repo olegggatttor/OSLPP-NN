@@ -7,7 +7,7 @@ from modules.algorithms.base.OSLPP import get_num_classes
 
 
 def _load_tensors(dataset, domain):
-    with open(f'../features/{dataset}/nocrop_{domain}.plk', 'rb') as f:
+    with open(f'./features/{dataset}/nocrop_{domain}.plk', 'rb') as f:
         features, labels = pickle.load(f)
     features, labels = features.numpy(), labels.numpy()
     assert len(features) == len(labels)

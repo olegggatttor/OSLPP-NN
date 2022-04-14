@@ -97,7 +97,7 @@ def get_closed_set_pseudo_labels(features_S, labels_S, features_T):
 
 
 def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, predictions, t, T, mode, uniform_ratio=15,
-                                    balanced=False):
+                                    balanced=False, weights=None, tops=None):
     if t >= T:
         t = T - 1
     selected = np.zeros_like(pseudo_labels)
@@ -109,7 +109,7 @@ def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, predictions, t,
                 class_indices, selected, pseudo_probs, predictions,
                 t, T, Nc,
                 mode,
-                uniform_ratio, balanced)
+                uniform_ratio, balanced, weights=weights, tops=tops)
     return selected
 
 
@@ -252,10 +252,3 @@ def main(params: Params, commons, tgt_privates):
     metrics = evaluate_T(params.num_common, params.num_src_priv, params.num_tgt_priv, lbls_T, cs_pseudo_labels,
                          rejected)
     return metrics
-
-
-if __name__ == '__main__':
-    params = Params(pca_dim=512, proj_dim=128, T=10, n_r=1200, n_r_ratio=None,
-                    dataset='OfficeHome', source='clipart', target='art',
-                    num_common=25, num_src_priv=0, num_tgt_priv=40)
-    print(params.source, params.target, main(params, commons, tgt_privates))

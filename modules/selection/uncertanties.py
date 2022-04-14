@@ -6,16 +6,10 @@ import numpy as np
 import torch
 
 
-class SelectRejectMode(Enum):
-    CONFIDENCE = 1
-    ENTROPY = 2
-    MARGIN = 3
-    WEIGHTED = 4
-    TOPS = 5
-
+from modules.types.selection_types import SelectRejectMode
 
 def get_confidence_scores(pseudo_probs) -> np.ndarray:
-    return pseudo_probs.numpy()
+    return pseudo_probs
 
 
 def get_entropy_scores(predictions) -> np.ndarray:
@@ -75,13 +69,27 @@ def select_initial_rejected(pseudo_probs, predictions, n_r, mode: SelectRejectMo
     return is_rejected
 
 
-def get_new_rejected(pseudo_probs, predictions, selected, rejected, mode: SelectRejectMode):
+def get_new_rejected(pseudo_probs, predictions, selected, rejected, mode: SelectRejectMode, weights=None, tops=None):
     if mode == SelectRejectMode.CONFIDENCE:
         scores = get_confidence_scores(pseudo_probs)
     elif mode == SelectRejectMode.ENTROPY:
         scores = get_entropy_scores(predictions)
     elif mode == SelectRejectMode.MARGIN:
         scores = get_margin_scores(predictions)
+    elif mode == SelectRejectMode.WEIGHTED:
+        scores = get_weighted_scores(pseudo_probs, predictions, weights)
+    elif mode == SelectRejectMode.TOPS:
+        conf = get_confidence_scores(pseudo_probs.numpy()) if SelectRejectMode.CONFIDENCE in tops else None
+        inv_entropy = get_entropy_scores(predictions) if SelectRejectMode.ENTROPY in tops else None
+        margin = get_margin_scores(predictions) if SelectRejectMode.MARGIN in tops else None
+
+        all_rejects = list(filter(lambda x: x is not None, [conf, inv_entropy, margin]))
+
+        def reject_by_scores(scores, rejected, selected):
+            return scores < min(scores[rejected == 1].max(), scores[selected == 1].min())
+
+        mask = np.logical_and.reduce(list(map(lambda x: reject_by_scores(x, rejected, selected), all_rejects)))
+        return mask
     else:
         raise Exception("Wrong select/reject mode.")
     scores = torch.tensor(scores)
