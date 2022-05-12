@@ -96,8 +96,8 @@ def get_closed_set_pseudo_labels(features_S, labels_S, features_T):
     return pseudo_labels, pseudo_probs
 
 
-def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, predictions, t, T, mode, uniform_ratio=15,
-                                    balanced=False, weights=None, tops=None):
+def select_closed_set_pseudo_labels(pseudo_labels, predictions, t, T, mode, uniform_ratio,
+                                    balanced, weights, tops, aug_preds):
     if t >= T:
         t = T - 1
     selected = np.zeros_like(pseudo_labels)
@@ -106,10 +106,10 @@ def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, predictions, t,
         Nc = len(class_indices)
         if Nc > 0:
             selected = select_closed_set_pseudo_labels_by_mode(
-                class_indices, selected, pseudo_probs, predictions,
+                class_indices, selected, predictions,
                 t, T, Nc,
                 mode,
-                uniform_ratio, balanced, weights=weights, tops=tops)
+                uniform_ratio, balanced, weights=weights, tops=tops, aug_preds=aug_preds)
     return selected
 
 
@@ -233,7 +233,8 @@ def main(params: Params, commons, tgt_privates):
         selected = selected * (1 - rejected)
 
         if t == 2:
-            rejected = select_initial_rejected(cs_pseudo_probs, None, get_n_r(params, lbls_T), mode=select_reject_mode)
+            rejected = select_initial_rejected(cs_pseudo_probs, get_n_r(params, lbls_T), select_reject_mode,
+                                               None, None, None)
         if t >= 2:
             rejected = update_rejected(selected, rejected, proj_T)
         selected = selected * (1 - rejected)
