@@ -83,34 +83,34 @@ class TripletLoss(nn.Module):
         return F.relu(self.distance_fn(anchor, pos) - self.distance_fn(anchor, neg) + self.margin).mean()
 
 
-# class InfoNCEDataset(Dataset):
-#     def __init__(self, feats, lbls, pos, neg):
-#         self.features = feats
-#         self.labels = lbls
-#         self.mapping = {c.item(): set(torch.where(lbls == c)[0].tolist()) for c in lbls.unique()}
-#         self.pos = pos
-#         self.neg = neg
-#
-#     def __len__(self): return len(self.labels)
-#
-#     def __getitem__(self, i):
-#         c = self.labels[i].item()
-#         pos = np.random.choice(sorted(self.mapping[c].difference({i})), size=self.pos, replace=False)
-#         c_neg = np.random.choice(sorted(set(self.mapping.keys()).difference({c})), size=self.neg)
-#         neg = np.stack([np.random.choice(sorted(self.mapping[c]), size=1).item() for c in c_neg])
-#         return {'anchor': (self.features[i], self.labels[i]),
-#                 'pos': (self.features[pos], self.labels[pos]),
-#                 'neg': (self.features[neg], self.labels[neg])}
-#
-#
-# class InfoNCELoss(nn.Module):
-#     def __init__(self, tau):
-#         super().__init__()
-#         self.tau = tau
-#
-#     def forward(self, anchor, pos, neg):
-#         p_sim = get_bulk_cosine_similarity(anchor, pos) / self.tau
-#         n_sim = get_bulk_cosine_similarity(anchor, neg) / self.tau
-#         p_sim = p_sim.exp().sum(dim=1)
-#         n_sim = n_sim.exp().sum(dim=1)
-#         return -torch.log(p_sim / (p_sim + n_sim)).mean()
+class InfoNCEDataset(Dataset):
+    def __init__(self, feats, lbls, pos, neg):
+        self.features = feats
+        self.labels = lbls
+        self.mapping = {c.item(): set(torch.where(lbls == c)[0].tolist()) for c in lbls.unique()}
+        self.pos = pos
+        self.neg = neg
+
+    def __len__(self): return len(self.labels)
+
+    def __getitem__(self, i):
+        c = self.labels[i].item()
+        pos = np.random.choice(sorted(self.mapping[c].difference({i})), size=self.pos, replace=False)
+        c_neg = np.random.choice(sorted(set(self.mapping.keys()).difference({c})), size=self.neg)
+        neg = np.stack([np.random.choice(sorted(self.mapping[c]), size=1).item() for c in c_neg])
+        return {'anchor': (self.features[i], self.labels[i]),
+                'pos': (self.features[pos], self.labels[pos]),
+                'neg': (self.features[neg], self.labels[neg])}
+
+
+class InfoNCELoss(nn.Module):
+    def __init__(self, tau):
+        super().__init__()
+        self.tau = tau
+
+    def forward(self, anchor, pos, neg):
+        p_sim = get_bulk_cosine_similarity(anchor, pos) / self.tau
+        n_sim = get_bulk_cosine_similarity(anchor, neg) / self.tau
+        p_sim = p_sim.exp().sum(dim=1)
+        n_sim = n_sim.exp().sum(dim=1)
+        return -torch.log(p_sim / (p_sim + n_sim)).mean()
